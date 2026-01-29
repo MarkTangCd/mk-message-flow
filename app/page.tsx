@@ -1,25 +1,15 @@
 "use client"
 import React, { useState } from "react";
-import { 
-  Inbox, 
-  Calendar, 
-  Sparkles, 
-  Star, 
-  Settings, 
-  Bell, 
-  Plus, 
-  Search,
-  MoreHorizontal,
+import {
+  Bell,
   Clock,
-  LucideIcon
+  MoreHorizontal,
+  Plus,
+  Search,
+  Sparkles,
 } from "lucide-react";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 import { MessageDetailModal, type Message as ModalMessage } from "./components/MessageDetailModal";
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { Sidebar } from "./components/Sidebar";
 
 interface Message {
   id: number;
@@ -110,21 +100,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-bg-primary font-sans text-text-primary">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-[280px] border-r border-border-primary bg-bg-surface px-6 py-8">
-        <div className="mb-12">
-          <h1 className="font-serif text-2xl font-semibold text-text-primary">MessageFlow</h1>
-          <p className="text-xs text-text-tertiary">AI Message Platform</p>
-        </div>
-
-        <nav className="space-y-1">
-          <NavItem icon={Inbox} label="Messages" active badge="3" />
-          <NavItem icon={Calendar} label="Schedules" />
-          <NavItem icon={Sparkles} label="AI Models" />
-          <NavItem icon={Star} label="Favorites" />
-          <NavItem icon={Settings} label="Settings" className="mt-8" />
-        </nav>
-      </aside>
+      <Sidebar activeItem="Messages" />
 
       {/* Main Content */}
       <main className="ml-[280px] flex-1">
@@ -183,44 +159,6 @@ export default function Dashboard() {
         />
       )}
     </div>
-  );
-}
-
-function NavItem({ 
-  icon: Icon, 
-  label, 
-  active = false, 
-  badge, 
-  className 
-}: { 
-  icon: LucideIcon; 
-  label: string; 
-  active?: boolean; 
-  badge?: string;
-  className?: string;
-}) {
-  return (
-    <a 
-      href="#" 
-      className={cn(
-        "flex h-11 items-center justify-between rounded-lg px-3 transition-colors",
-        active ? "bg-accent-primary text-white" : "text-text-tertiary hover:bg-bg-muted hover:text-text-primary",
-        className
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <Icon size={20} />
-        <span className="text-sm font-medium">{label}</span>
-      </div>
-      {badge && (
-        <span className={cn(
-          "flex h-5 items-center justify-center rounded-full px-2 font-mono text-[10px] font-bold",
-          active ? "bg-white text-accent-primary" : "bg-bg-muted text-text-tertiary"
-        )}>
-          {badge}
-        </span>
-      )}
-    </a>
   );
 }
 
