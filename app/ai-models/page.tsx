@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Bot,
   BrainCircuit,
@@ -7,7 +9,9 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
+import { useState } from "react";
 import { Sidebar } from "../components/Sidebar";
+import { AddModelModal } from "../components/AddModelModal";
 
 const MODELS = [
   {
@@ -48,6 +52,8 @@ const MODELS = [
 ];
 
 export default function AIModelsPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <div className="flex min-h-screen bg-bg-primary font-sans text-text-primary">
       <Sidebar activeItem="AI Models" />
@@ -59,7 +65,10 @@ export default function AIModelsPage() {
               <h2 className="font-serif text-[40px] font-medium leading-tight">AI Models</h2>
               <p className="text-sm text-text-tertiary">Configure AI model providers</p>
             </div>
-            <button className="flex h-11 items-center gap-2 rounded-lg bg-accent-primary px-4 font-semibold text-white transition-opacity hover:opacity-90">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex h-11 items-center gap-2 rounded-lg bg-accent-primary px-4 font-semibold text-white transition-opacity hover:opacity-90"
+            >
               <Plus size={16} />
               <span>Add Model</span>
             </button>
@@ -79,6 +88,8 @@ export default function AIModelsPage() {
           </div>
         </div>
       </main>
+
+      <AddModelModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }
