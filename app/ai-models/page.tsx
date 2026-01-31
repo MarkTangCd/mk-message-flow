@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import {
   Bot,
   BrainCircuit,
@@ -9,50 +10,100 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
 import { Sidebar } from "../components/Sidebar";
 import { AddModelModal } from "../components/AddModelModal";
+import { aiModelsApi } from "@/lib/api-client";
+import { AIModel } from "@/lib/types";
 
-const MODELS = [
-  {
-    id: "openai",
-    provider: "OpenAI",
-    name: "GPT-4",
-    notes: "Primary model for market analysis and daily reports",
-    status: "ACTIVE",
-    icon: BrainCircuit,
-    iconBg: "bg-accent-primary",
-  },
-  {
-    id: "anthropic-sonnet",
-    provider: "Anthropic",
-    name: "Claude Sonnet 4.5",
-    notes: "Used for weekly summaries and customer feedback analysis",
-    status: "ACTIVE",
-    icon: Sparkles,
-    iconBg: "bg-accent-secondary",
-  },
-  {
-    id: "google",
-    provider: "Google",
-    name: "Gemini Pro",
-    notes: "Testing for technical documentation generation",
-    icon: Bot,
-    iconBg: "bg-[#6B7280]",
-  },
-  {
-    id: "anthropic-opus",
-    provider: "Anthropic",
-    name: "Claude Opus 4.5",
-    notes: "Premium model for complex analysis and strategic insights",
-    status: "ACTIVE",
-    icon: Zap,
-    iconBg: "bg-[#8B5CF6]",
-  },
-];
+const getIconForModel = (companyName: string) => {
+  const icons: Record<string, typeof BrainCircuit> = {
+    "OpenAI": BrainCircuit,
+    "Anthropic": Sparkles,
+    "Google": Bot,
+    "default": Zap,
+  };
+  return icons[companyName] || icons["default"];
+};
+
+const getIconBgForModel = (index: number): string => {
+  const colors = [
+    "bg-accent-primary",
+    "bg-accent-secondary", 
+    "bg-[#6B7280]",
+    "bg-[#8B5CF6]",
+    "bg-[#10B981]",
+    "bg-[#F59E0B]",
+  ];
+  return colors[index % colors.length];
+};
+
+interface DisplayModel {
+  id: string;
+  provider: string;
+  name: string;
+  notes: string;
+  status: string;
+  icon: typeof BrainCircuit;
+  iconBg: string;
+  rawData: AIModel;
+}
 
 export default function AIModelsPage() {
+  const [models, setModels] = useState<DisplayModel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    loadModels();
+  }, []);
+
+  async function loadModels() {
+    try {
+      setIsLoading(true);
+      const response = await aiModelsApi.getAll();
+      if (response.success && response.data) {
+        const displayModels: DisplayModel[] = response.data.map((model, index) => ({
+          id: model.id.toString(),
+          provider: model.company_name,
+          name: model.model_name,
+          notes: model.remark || "No notes provided",
+          status: model.is_active ? "ACTIVE" : "INACTIVE",
+          icon: getIconForModel(model.company_name),
+          iconBg: getIconBgForModel(index),
+          rawData: model,
+        }));
+        setModels(displayModels);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load AI models");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleCreateModel = async (input: { companyName: string; modelName: string; notes?: string }) => {
+    try {
+      await aiModelsApi.create({
+        company_name: input.companyName,
+        model_name: input.modelName,
+        remark: input.notes,
+      });
+      setIsModalOpen(false);
+      loadModels();
+    } catch (err) {
+      console.error("Failed to create model:", err);
+    }
+  };
+
+  const handleDeleteModel = async (id: string) => {
+    try {
+      await aiModelsApi.delete(parseInt(id));
+      setModels((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      console.error("Failed to delete model:", err);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-bg-primary font-sans text-text-primary">
@@ -78,18 +129,32 @@ export default function AIModelsPage() {
             <span className="font-mono text-[11px] font-bold tracking-[0.2em] text-text-tertiary">
               CONFIGURED MODELS
             </span>
-            <span className="text-sm font-medium text-text-tertiary">{MODELS.length} models</span>
+            <span className="text-sm font-medium text-text-tertiary">{models.length} models</span>
           </div>
 
-          <div className="space-y-4">
-            {MODELS.map((model) => (
-              <ModelCard key={model.id} {...model} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="py-12 text-center text-text-secondary">Loading AI models...</div>
+          ) : error ? (
+            <div className="py-12 text-center text-red-500">{error}</div>
+          ) : (
+            <div className="space-y-4">
+              {models.map((model) => (
+                <ModelCard 
+                  key={model.id} 
+                  {...model} 
+                  onDelete={() => handleDeleteModel(model.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </main>
 
-      <AddModelModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AddModelModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onCreate={handleCreateModel}
+      />
     </div>
   );
 }
@@ -101,14 +166,8 @@ function ModelCard({
   status,
   icon: Icon,
   iconBg,
-}: {
-  provider: string;
-  name: string;
-  notes: string;
-  status?: string;
-  icon: typeof BrainCircuit;
-  iconBg: string;
-}) {
+  onDelete,
+}: DisplayModel & { onDelete?: () => void }) {
   return (
     <div className="flex items-center gap-5 rounded-xl border border-border-primary bg-bg-surface p-5">
       <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${iconBg}`}>
@@ -138,6 +197,7 @@ function ModelCard({
           <Pencil size={16} />
         </button>
         <button
+          onClick={onDelete}
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-primary text-text-primary transition-colors hover:bg-bg-muted"
           aria-label={`Delete ${provider} model`}
         >

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrainCircuit,
   MessageSquare,
@@ -10,42 +10,133 @@ import {
 } from "lucide-react";
 import { AddScheduleModal } from "../components/AddScheduleModal";
 import { Sidebar } from "../components/Sidebar";
+import { schedulesApi, aiModelsApi } from "@/lib/api-client";
+import { ScheduledTaskWithModel, AIModel } from "@/lib/types";
 
-const SCHEDULES = [
-  {
-    id: "daily-market",
-    time: "09:00",
-    cadence: "Daily",
-    title: "Daily Market Analysis",
-    status: "ACTIVE",
-    model: "GPT-4",
-    prompt: "Market trends analysis",
-    indicatorColor: "bg-accent-primary",
-  },
-  {
-    id: "weekly-summary",
-    time: "08:00",
-    cadence: "Monday",
-    title: "Weekly Project Summary",
-    status: "ACTIVE",
-    model: "Claude Sonnet",
-    prompt: "Weekly progress summary",
-    indicatorColor: "bg-accent-secondary",
-  },
-  {
-    id: "monthly-revenue",
-    time: "10:00",
-    cadence: "1st of month",
-    title: "Monthly Revenue Report",
-    status: "ACTIVE",
-    model: "GPT-4",
-    prompt: "Financial analysis report",
-    indicatorColor: "bg-[#8B5CF6]",
-  },
-];
+interface DisplaySchedule {
+  id: string;
+  time: string;
+  cadence: string;
+  title: string;
+  status: string;
+  model: string;
+  prompt: string;
+  indicatorColor: string;
+  rawData: ScheduledTaskWithModel;
+}
+
+function getCadenceDisplay(task: ScheduledTaskWithModel): string {
+  const type = task.schedule_type;
+  if (type === "daily") return "Daily";
+  if (type === "weekly") {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return task.day_of_week !== null ? days[task.day_of_week] : "Weekly";
+  }
+  if (type === "monthly") {
+    return task.day_of_month !== null ? `${task.day_of_month}th of month` : "Monthly";
+  }
+  return type;
+}
+
+function getIndicatorColor(index: number): string {
+  const colors = ["bg-accent-primary", "bg-accent-secondary", "bg-[#8B5CF6]", "bg-[#10B981]"];
+  return colors[index % colors.length];
+}
 
 export default function SchedulesPage() {
+  const [schedules, setSchedules] = useState<DisplaySchedule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [aiModels, setAiModels] = useState<AIModel[]>([]);
+
+  useEffect(() => {
+    loadSchedules();
+    loadAiModels();
+  }, []);
+
+  async function loadSchedules() {
+    try {
+      setIsLoading(true);
+      const response = await schedulesApi.getAll();
+      if (response.success && response.data) {
+        const displaySchedules: DisplaySchedule[] = response.data.map((task, index) => ({
+          id: task.id.toString(),
+          time: `${task.execution_hour.toString().padStart(2, "0")}:${task.execution_minute.toString().padStart(2, "0")}`,
+          cadence: getCadenceDisplay(task),
+          title: task.name,
+          status: task.is_active ? "ACTIVE" : "INACTIVE",
+          model: `${task.ai_model_company} ${task.ai_model_name}`,
+          prompt: task.prompt_content.length > 30 
+            ? task.prompt_content.substring(0, 30) + "..." 
+            : task.prompt_content,
+          indicatorColor: getIndicatorColor(index),
+          rawData: task,
+        }));
+        setSchedules(displaySchedules);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load schedules");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function loadAiModels() {
+    try {
+      const response = await aiModelsApi.getAll();
+      if (response.success && response.data) {
+        setAiModels(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to load AI models:", err);
+    }
+  }
+
+  const handleCreateSchedule = async (draft: {
+    taskName: string;
+    model: string;
+    prompt: string;
+    frequency: "daily" | "weekly" | "monthly";
+    hour: string;
+    minute: string;
+    notes: string;
+  }) => {
+    try {
+      const selectedModel = aiModels.find((m) => 
+        `${m.company_name} ${m.model_name}` === draft.model
+      );
+      
+      if (!selectedModel) {
+        console.error("Selected model not found");
+        return;
+      }
+
+      await schedulesApi.create({
+        name: draft.taskName,
+        ai_model_id: selectedModel.id,
+        prompt_content: draft.prompt,
+        remark: draft.notes,
+        schedule_type: draft.frequency,
+        execution_hour: parseInt(draft.hour),
+        execution_minute: parseInt(draft.minute),
+      });
+      
+      setIsModalOpen(false);
+      loadSchedules();
+    } catch (err) {
+      console.error("Failed to create schedule:", err);
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    try {
+      await schedulesApi.delete(parseInt(id));
+      setSchedules((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      console.error("Failed to delete schedule:", err);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-bg-primary font-sans text-text-primary">
@@ -73,63 +164,77 @@ export default function SchedulesPage() {
             <span className="font-mono text-[11px] font-bold tracking-[0.2em] text-text-tertiary">
               ACTIVE SCHEDULES
             </span>
-            <span className="text-sm font-medium text-text-tertiary">5 schedules</span>
+            <span className="text-sm font-medium text-text-tertiary">{schedules.length} schedules</span>
           </div>
 
-          <div className="flex flex-col gap-3">
-            {SCHEDULES.map((schedule) => (
-              <div
-                key={schedule.id}
-                className="flex items-center gap-5 rounded-xl border border-border-primary bg-bg-surface p-5"
-              >
+          {isLoading ? (
+            <div className="py-12 text-center text-text-secondary">Loading schedules...</div>
+          ) : error ? (
+            <div className="py-12 text-center text-red-500">{error}</div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {schedules.map((schedule) => (
                 <div
-                  className={`h-20 w-1 rounded-sm ${schedule.indicatorColor}`}
-                  aria-hidden="true"
-                />
-                <div className="flex w-[100px] flex-col gap-0.5">
-                  <span className="font-mono text-[20px] font-semibold text-text-primary">
-                    {schedule.time}
-                  </span>
-                  <span className="text-xs text-text-tertiary">{schedule.cadence}</span>
-                </div>
-
-                <div className="flex flex-1 flex-col gap-2">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="font-serif text-lg font-medium text-text-primary">
-                      {schedule.title}
-                    </h3>
-                    <span className="rounded bg-accent-primary px-2 py-1 font-mono text-[10px] font-bold tracking-[0.04em] text-white">
-                      {schedule.status}
+                  key={schedule.id}
+                  className="flex items-center gap-5 rounded-xl border border-border-primary bg-bg-surface p-5"
+                >
+                  <div
+                    className={`h-20 w-1 rounded-sm ${schedule.indicatorColor}`}
+                    aria-hidden="true"
+                  />
+                  <div className="flex w-[100px] flex-col gap-0.5">
+                    <span className="font-mono text-[20px] font-semibold text-text-primary">
+                      {schedule.time}
                     </span>
+                    <span className="text-xs text-text-tertiary">{schedule.cadence}</span>
                   </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5 text-text-tertiary">
-                      <BrainCircuit size={14} />
-                      <span className="text-sm">{schedule.model}</span>
+                  <div className="flex flex-1 flex-col gap-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <h3 className="font-serif text-lg font-medium text-text-primary">
+                        {schedule.title}
+                      </h3>
+                      <span className="rounded bg-accent-primary px-2 py-1 font-mono text-[10px] font-bold tracking-[0.04em] text-white">
+                        {schedule.status}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-text-tertiary">
-                      <MessageSquare size={14} />
-                      <span className="text-sm">{schedule.prompt}</span>
+
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5 text-text-tertiary">
+                        <BrainCircuit size={14} />
+                        <span className="text-sm">{schedule.model}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-text-tertiary">
+                        <MessageSquare size={14} />
+                        <span className="text-sm">{schedule.prompt}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-primary text-text-primary transition-colors hover:bg-bg-muted">
-                    <Pencil size={16} />
-                  </button>
-                  <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-primary text-text-primary transition-colors hover:bg-bg-muted">
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-primary text-text-primary transition-colors hover:bg-bg-muted">
+                      <Pencil size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteSchedule(schedule.id)}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-primary text-text-primary transition-colors hover:bg-bg-muted"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
 
-      <AddScheduleModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AddScheduleModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onCreate={handleCreateSchedule}
+        aiModels={aiModels}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
-"use client"
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import {
   Clock,
   MoreHorizontal,
@@ -9,135 +10,134 @@ import {
 } from "lucide-react";
 import { MessageDetailModal, type Message as ModalMessage } from "../components/MessageDetailModal";
 import { Sidebar } from "../components/Sidebar";
+import { favoritesApi, messagesApi } from "@/lib/api-client";
+import { MessageWithDetails } from "@/lib/types";
 
-interface FavoriteMessage {
+interface DisplayFavorite {
   id: number;
   title: string;
   time: string;
   preview: string;
   status: string;
   model: string;
-  content?: string;
-  prompt?: string;
+  content: string;
+  prompt: string;
+  schedule: string;
+  rawData: MessageWithDetails;
 }
 
-const FAVORITE_MESSAGES: FavoriteMessage[] = [
-  {
-    id: 1,
-    title: "Product Roadmap Q1",
-    time: "Oct 28",
-    preview: "Comprehensive roadmap outlining key milestones for Q1 2024 including feature releases...",
-    status: "DELIVERED",
-    model: "GPT-4",
-    content: `Comprehensive roadmap outlining key milestones for Q1 2024 including feature releases, team expansion, and market expansion strategies.
-
-Key Milestones:
-• January: Launch v2.0 with enhanced AI capabilities
-• February: Expand team by 15 members
-• March: Enter European market
-
-Resource Allocation:
-- Engineering: 60%
-- Marketing: 25%
-- Operations: 15%
-
-Expected outcomes include 40% user growth and establishment of European presence.`,
-    prompt: "Create a detailed Q1 2024 product roadmap with milestones and resource allocation."
-  },
-  {
-    id: 2,
-    title: "Competitive Analysis",
-    time: "Oct 25",
-    preview: "Analysis of top 3 competitors reveals opportunities in AI customization and pricing...",
-    status: "DELIVERED",
-    model: "Claude 3",
-    content: `Analysis of top 3 competitors reveals opportunities in AI customization and pricing flexibility.
-
-Competitor A:
-- Strengths: Strong brand recognition
-- Weaknesses: Limited customization options
-- Pricing: Premium tier at $99/month
-
-Competitor B:
-- Strengths: Affordable entry point
-- Weaknesses: Limited enterprise features
-- Pricing: Freemium model
-
-Opportunities identified:
-1. Mid-tier pricing gap
-2. Enhanced customization features
-3. Better enterprise onboarding`,
-    prompt: "Analyze our top 3 competitors and identify market opportunities."
-  },
-  {
-    id: 3,
-    title: "User Interview Summary",
-    time: "Oct 22",
-    preview: "Summary of 12 user interviews highlighting key pain points and feature requests...",
-    status: "DELIVERED",
-    model: "GPT-4",
-    content: `Summary of 12 user interviews highlighting key pain points and feature requests.
-
-Top Pain Points:
-1. Difficulty finding scheduled messages (8/12 users)
-2. Limited export options (6/12 users)
-3. Notification timing issues (5/12 users)
-
-Most Requested Features:
-• Bulk message actions (9/12 users)
-• Dark mode support (7/12 users)
-• Integration with Slack (6/12 users)
-
-Satisfaction Score: 4.2/5.0
-NPS: +42`,
-    prompt: "Summarize findings from 12 user interviews focusing on pain points and feature requests."
-  },
-  {
-    id: 4,
-    title: "Technical Architecture Review",
-    time: "Oct 18",
-    preview: "Review of current architecture with recommendations for scalability improvements...",
-    status: "DELIVERED",
-    model: "Gemini Pro",
-    content: `Review of current architecture with recommendations for scalability improvements.
-
-Current State:
-- Monolithic application structure
-- Single database instance
-- Synchronous processing pipeline
-
-Recommendations:
-1. Migrate to microservices architecture
-2. Implement read replicas for database
-3. Add message queue for async processing
-4. Implement caching layer with Redis
-
-Estimated effort: 3-4 months
-Expected benefits: 10x throughput improvement`,
-    prompt: "Review our technical architecture and provide scalability recommendations."
+function formatTime(date: Date | string): string {
+  const d = new Date(date);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  
+  if (days === 0) {
+    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  } else if (days === 1) {
+    return "Yesterday";
+  } else {
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
-];
+}
+
+function getScheduleDisplay(task: MessageWithDetails): string {
+  const type = task.schedule_type;
+  const hour = task.execution_hour.toString().padStart(2, "0");
+  const minute = task.execution_minute.toString().padStart(2, "0");
+  const time = `${hour}:${minute}`;
+  
+  if (type === "daily") return `Daily · ${time}`;
+  if (type === "weekly") return `Weekly · ${time}`;
+  if (type === "monthly") return `Monthly · ${time}`;
+  return `${type} · ${time}`;
+}
 
 export default function FavoritesPage() {
+  const [favorites, setFavorites] = useState<DisplayFavorite[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<ModalMessage | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleMessageClick = (msg: FavoriteMessage) => {
+  useEffect(() => {
+    loadFavorites();
+  }, []);
+
+  async function loadFavorites() {
+    try {
+      setIsLoading(true);
+      const response = await favoritesApi.getAll({ limit: 50 });
+      if (response.success && response.data) {
+        const displayFavorites: DisplayFavorite[] = response.data.map((msg) => ({
+          id: msg.id,
+          title: msg.title || msg.task_name || "Untitled Message",
+          time: formatTime(msg.favorited_at || msg.created_at),
+          preview: msg.summary || msg.content.substring(0, 100) + "...",
+          status: "DELIVERED",
+          model: `${msg.ai_model_company} ${msg.ai_model_name}`,
+          content: msg.content,
+          prompt: msg.prompt_content,
+          schedule: getScheduleDisplay(msg),
+          rawData: msg,
+        }));
+        setFavorites(displayFavorites);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load favorites");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleMessageClick = (msg: DisplayFavorite) => {
     setSelectedMessage({
       id: msg.id.toString(),
       title: msg.title,
       generatedAt: msg.time,
       model: msg.model,
-      schedule: "Daily · 09:00 AM",
-      status: (msg.status === "DELIVERED" ? "DELIVERED" : "PENDING"),
-      content: msg.content || msg.preview,
-      prompt: msg.prompt || "No prompt available for this message."
+      schedule: msg.schedule,
+      status: "DELIVERED",
+      content: msg.content,
+      prompt: msg.prompt,
+      rawData: msg.rawData,
+      onMarkAsRead: handleMarkAsRead,
+      onAddToFavorites: handleRemoveFromFavorites,
+      onDelete: handleDeleteMessage,
     });
   };
 
-  const filteredMessages = FAVORITE_MESSAGES.filter(msg =>
-    msg.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    msg.preview.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await messagesApi.markAsRead(parseInt(id));
+    } catch (err) {
+      console.error("Failed to mark as read:", err);
+    }
+  };
+
+  const handleRemoveFromFavorites = async (id: string) => {
+    try {
+      await messagesApi.removeFromFavorites(parseInt(id));
+      setFavorites((prev) => prev.filter((msg) => msg.id.toString() !== id));
+    } catch (err) {
+      console.error("Failed to remove from favorites:", err);
+    }
+  };
+
+  const handleDeleteMessage = async (id: string) => {
+    try {
+      await messagesApi.delete(parseInt(id));
+      setFavorites((prev) => prev.filter((msg) => msg.id.toString() !== id));
+      setSelectedMessage(null);
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    }
+  };
+
+  const filteredFavorites = favorites.filter(
+    (msg) =>
+      msg.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      msg.preview.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -164,18 +164,24 @@ export default function FavoritesPage() {
 
           <div className="mb-6 flex items-center justify-between border-b border-border-primary pb-4">
             <span className="font-mono text-[11px] font-bold tracking-[0.2em] text-text-tertiary">FAVORITED MESSAGES</span>
-            <span className="text-sm font-medium text-text-tertiary">{filteredMessages.length} messages</span>
+            <span className="text-sm font-medium text-text-tertiary">{filteredFavorites.length} messages</span>
           </div>
 
-          <div className="space-y-0">
-            {filteredMessages.map((msg) => (
-              <FavoriteMessageItem
-                key={msg.id}
-                {...msg}
-                onClick={() => handleMessageClick(msg)}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="py-12 text-center text-text-secondary">Loading favorites...</div>
+          ) : error ? (
+            <div className="py-12 text-center text-red-500">{error}</div>
+          ) : (
+            <div className="space-y-0">
+              {filteredFavorites.map((msg) => (
+                <FavoriteMessageItem
+                  key={msg.id}
+                  {...msg}
+                  onClick={() => handleMessageClick(msg)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </main>
 
@@ -190,9 +196,16 @@ export default function FavoritesPage() {
   );
 }
 
-function FavoriteMessageItem({ title, time, preview, status, model, onClick }: FavoriteMessage & { onClick?: () => void }) {
+function FavoriteMessageItem({
+  title,
+  time,
+  preview,
+  status,
+  model,
+  onClick,
+}: DisplayFavorite & { onClick?: () => void }) {
   return (
-    <div 
+    <div
       onClick={onClick}
       className="group relative flex cursor-pointer flex-col gap-1 border-b border-border-primary bg-bg-surface py-5 transition-colors hover:bg-white/50"
     >
@@ -203,11 +216,13 @@ function FavoriteMessageItem({ title, time, preview, status, model, onClick }: F
         </div>
         <span className="text-xs text-text-tertiary">{time}</span>
       </div>
-      
+
       <div className="flex items-center gap-3 px-4">
         <div className="flex items-center gap-1.5 rounded bg-bg-muted px-2 py-0.5">
           <Clock size={12} className="text-text-tertiary" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">{status}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+            {status}
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <Sparkles size={12} className="text-text-tertiary" />

@@ -3,7 +3,6 @@ import {
   BrainCircuit,
   Calendar,
   Inbox,
-  Settings,
   Star,
   type LucideIcon,
 } from "lucide-react";
@@ -27,7 +26,6 @@ const NAV_ITEMS: NavItemConfig[] = [
   { label: "Schedules", href: "/schedules", icon: Calendar },
   { label: "AI Models", href: "/ai-models", icon: BrainCircuit },
   { label: "Favorites", href: "/favorites", icon: Star },
-  { label: "Settings", href: "/settings", icon: Settings, className: "mt-8" },
 ];
 
 export function Sidebar({ activeItem }: { activeItem: string }) {

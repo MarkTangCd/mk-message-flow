@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { clsx } from "clsx";
+import { AIModel } from "@/lib/types";
 
 export type ScheduleFrequency = "daily" | "weekly" | "monthly";
 
@@ -20,11 +21,10 @@ interface AddScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate?: (draft: ScheduleDraft) => void;
+  aiModels: AIModel[];
 }
 
-const MODEL_OPTIONS = ["GPT-4", "Claude Sonnet", "Gemini Pro"];
-
-export function AddScheduleModal({ isOpen, onClose, onCreate }: AddScheduleModalProps) {
+export function AddScheduleModal({ isOpen, onClose, onCreate, aiModels }: AddScheduleModalProps) {
   const [taskName, setTaskName] = useState("");
   const [model, setModel] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -40,6 +40,8 @@ export function AddScheduleModal({ isOpen, onClose, onCreate }: AddScheduleModal
     onCreate?.({ taskName, model, prompt, frequency, hour, minute, notes });
     onClose();
   };
+
+  const modelOptions = aiModels.map((m) => `${m.company_name} ${m.model_name}`);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
@@ -81,7 +83,7 @@ export function AddScheduleModal({ isOpen, onClose, onCreate }: AddScheduleModal
                 <option value="" disabled>
                   Select a model
                 </option>
-                {MODEL_OPTIONS.map((option) => (
+                {modelOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>

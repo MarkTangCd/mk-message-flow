@@ -3,16 +3,21 @@
 import React from "react";
 import { X, Trash2, Star, Check } from "lucide-react";
 import { clsx } from "clsx";
+import { MessageWithDetails } from "@/lib/types";
 
 export interface Message {
   id: string;
   title: string;
-  generatedAt: string; // e.g., "2 minutes ago"
-  model: string; // e.g., "GPT-4"
-  schedule: string; // e.g., "Daily · 09:00 AM"
+  generatedAt: string;
+  model: string;
+  schedule: string;
   status: "DELIVERED" | "PENDING" | "FAILED";
   content: string;
   prompt: string;
+  rawData?: MessageWithDetails;
+  onMarkAsRead?: (id: string) => void;
+  onAddToFavorites?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 interface MessageDetailModalProps {
@@ -28,10 +33,21 @@ export function MessageDetailModal({
 }: MessageDetailModalProps) {
   if (!isOpen) return null;
 
+  const handleMarkAsRead = () => {
+    message.onMarkAsRead?.(message.id);
+  };
+
+  const handleAddToFavorites = () => {
+    message.onAddToFavorites?.(message.id);
+  };
+
+  const handleDelete = () => {
+    message.onDelete?.(message.id);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-bg-surface w-full max-w-2xl rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
         <div className="p-6 border-b border-border-primary flex justify-between items-start">
           <div>
             <h2 className="font-serif text-2xl font-medium text-text-primary">
@@ -49,7 +65,6 @@ export function MessageDetailModal({
           </button>
         </div>
 
-        {/* Meta Bar */}
         <div className="px-6 py-4 border-b border-border-primary flex gap-8 bg-bg-primary/50">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-wider text-text-tertiary mb-1">
@@ -84,7 +99,6 @@ export function MessageDetailModal({
           </div>
         </div>
 
-        {/* Scrollable Content */}
         <div className="p-6 overflow-y-auto flex-1">
           <div className="mb-8">
             <p className="font-mono text-[10px] uppercase tracking-wider text-text-tertiary mb-4">
@@ -105,17 +119,25 @@ export function MessageDetailModal({
           </div>
         </div>
 
-        {/* Footer Actions */}
         <div className="p-6 border-t border-border-primary flex justify-end gap-3 bg-bg-surface">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-primary text-text-primary font-medium text-sm hover:bg-bg-muted transition-colors">
+          <button 
+            onClick={handleDelete}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-primary text-text-primary font-medium text-sm hover:bg-bg-muted transition-colors"
+          >
             <Trash2 size={16} />
             Delete
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-primary text-text-primary font-medium text-sm hover:bg-bg-muted transition-colors">
+          <button 
+            onClick={handleAddToFavorites}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border-primary text-text-primary font-medium text-sm hover:bg-bg-muted transition-colors"
+          >
             <Star size={16} />
             Add to Favorites
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white font-medium text-sm hover:opacity-90 transition-opacity">
+          <button 
+            onClick={handleMarkAsRead}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white font-medium text-sm hover:opacity-90 transition-opacity"
+          >
             <Check size={16} />
             Mark as Read
           </button>
