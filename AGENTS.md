@@ -2,301 +2,192 @@
 
 ## Project Overview
 
-This is a Next.js 16 App Router application with React 19, TypeScript, and Tailwind CSS v4. It's an AI message platform called "MessageFlow" with a dashboard UI featuring messages, schedules, AI models, and favorites.
+Next.js 16 App Router application with React 19, TypeScript, and Tailwind CSS v4. AI message platform called "MessageFlow" with dashboard UI for messages, schedules, AI models, and favorites.
 
-## Project Structure & Module Organization
+## Project Structure
 
-- `app/` - Next.js App Router code
-  - `layout.tsx` - Root layout with font configuration (Inter, Newsreader, JetBrains Mono)
-  - `page.tsx` - Dashboard home page (Messages view)
-  - `globals.css` - Global styles and Tailwind v4 theme variables
-  - `components/` - Shared React components (Sidebar, modals, etc.)
-  - `favorites/`, `schedules/`, `ai-models/` - Route segments with `page.tsx`
-- `public/` - Static assets served at site root
-- Config files at repo root: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `postcss.config.mjs`
+```
+app/                    # Next.js App Router
+├── layout.tsx         # Root layout with fonts (Inter, Newsreader, JetBrains Mono)
+├── page.tsx           # Dashboard (Messages view)
+├── globals.css        # Tailwind v4 theme variables
+├── components/        # Shared React components
+├── schedules/         # Schedule management page
+├── ai-models/         # AI model configuration page
+├── favorites/         # Favorites page
+├── api/               # API routes
+│   ├── messages/      # Messages CRUD
+│   ├── schedules/     # Schedules CRUD
+│   ├── ai-models/     # AI models CRUD
+│   ├── cron/execute-schedules/  # Cron job for AI execution
+│   └── favorites/     # Favorites API
+lib/
+├── types.ts           # TypeScript types
+├── db.ts              # PostgreSQL connection
+├── api-client.ts      # Client API wrapper
+├── ai-service.ts      # AI execution with OpenRouter
+├── schedule-utils.ts  # Schedule query utilities
+└── model-mapping.ts   # OpenRouter model ID generation
+public/                # Static assets
+```
 
-## Build, Test, and Development Commands
+## Commands
 
 ```bash
 # Development
-npm run dev          # Start dev server at http://localhost:3000 with HMR
+npm run dev          # Start dev server at http://localhost:3000
 
 # Production
 npm run build        # Create production build
-npm run start        # Run production server from build output
+npm run start        # Run production server
 
 # Linting
-npm run lint         # Run ESLint using Next.js + TypeScript config
+npm run lint         # Run ESLint
 ```
 
-**Note:** No test framework is currently configured. To add tests, install Jest/Vitest/Playwright and update this section.
+**Note:** No test framework configured. Install Jest/Vitest/Playwright to add tests.
 
-## Code Style Guidelines
+## Code Style
 
 ### Language & Framework
-- **TypeScript**: Strict mode enabled (`strict: true` in tsconfig)
-- **React**: Version 19 with Next.js 16 App Router
-- **Client Components**: Mark with `"use client"` at the top of the file when using hooks or browser APIs
+- TypeScript with strict mode enabled
+- React 19 with Next.js 16 App Router
+- Client components: mark with `"use client"` when using hooks/browser APIs
 
-### Formatting & Indentation
-- **Indentation**: 2 spaces (no tabs)
-- **Quotes**: Double quotes for strings, JSX attributes, and imports
-- **Semicolons**: Use semicolons at the end of statements
-- **Line Length**: Keep lines readable (aim for ~100 characters)
+### Formatting
+- Indentation: 2 spaces
+- Quotes: Double quotes
+- Semicolons: Required
+- Line length: ~100 characters
 
-### Imports & Module Organization
+### Imports (ordered)
 ```typescript
-// 1. React and Next.js imports first
+// 1. React/Next.js
 import React, { useState } from "react";
-import Link from "next/link";
 import type { Metadata } from "next";
 
-// 2. Third-party libraries (alphabetical)
-import { clsx, type ClassValue } from "clsx";
+// 2. Third-party (alphabetical)
+import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-// 3. Lucide icons (grouped together)
-import { Bell, Plus, Search, X } from "lucide-react";
+// 3. Lucide icons
+import { Bell, Plus } from "lucide-react";
 
-// 4. Local components and types (relative paths)
-import { Sidebar } from "../components/Sidebar";
-import { MessageDetailModal, type Message as ModalMessage } from "./components/MessageDetailModal";
-
-// 5. Type imports use explicit `type` keyword
-import type { LucideIcon } from "lucide-react";
+// 4. Local
+import { Sidebar } from "./components/Sidebar";
+import type { Message } from "@/lib/types";
 ```
 
-### Naming Conventions
-- **Components**: PascalCase (e.g., `MessageDetailModal.tsx`, `Sidebar.tsx`)
-- **Component Functions**: PascalCase (e.g., `function MessageDetailModal()`)
-- **Variables & Functions**: camelCase (e.g., `const [isOpen, setIsOpen] = useState()`)
-- **Interfaces & Types**: PascalCase (e.g., `interface MessageDetailModalProps`)
-- **Constants**: UPPER_SNAKE_CASE for true constants (e.g., `const MESSAGES = [...]`)
-- **Type Aliases**: Use `type` for unions/complex types, `interface` for object shapes
+### Naming
+- Components: PascalCase (`MessageDetailModal.tsx`)
+- Functions/variables: camelCase (`handleClick`)
+- Interfaces: PascalCase (`MessageProps`)
+- Constants: UPPER_SNAKE_CASE
+- Use `type` for unions, `interface` for objects
 
 ### TypeScript Patterns
-
-#### Interface Definitions
 ```typescript
-// Props interfaces use ComponentName + Props
-interface MessageDetailModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  message: Message;
-}
-
-// Data interfaces describe domain entities
-interface Message {
+// Props interface
+interface MessageProps {
   id: string;
-  title: string;
-  status: "DELIVERED" | "PENDING" | "FAILED"; // Literal unions for enums
+  status: "DELIVERED" | "PENDING" | "FAILED";
 }
 
-// Export types that are used across files
-export interface ScheduleDraft {
-  taskName: string;
-  frequency: ScheduleFrequency;
+// Function component
+export function MessageCard({ id, status }: MessageProps) {
+  if (!id) return null;
+  return <div>{status}</div>;
 }
 
-export type ScheduleFrequency = "daily" | "weekly" | "monthly";
-```
-
-#### Function Components
-```typescript
-// Use function declarations for components
-export function MessageDetailModal({
-  isOpen,
-  onClose,
-  message,
-}: MessageDetailModalProps) {
-  if (!isOpen) return null;
-  
-  return (
-    // JSX
-  );
-}
-
-// Default exports for page components
+// Default export for pages
 export default function Dashboard() {
-  // Component logic
+  const [items, setItems] = useState<Item[]>([]);
 }
 ```
 
-### React Patterns
+### Tailwind CSS v4
+Class ordering: Layout → Sizing → Spacing → Borders → Background → Typography → Effects
 
-#### State Management
 ```typescript
-// useState with explicit types when needed
-const [isModalOpen, setIsModalOpen] = useState(false);
-const [selectedMessage, setSelectedMessage] = useState<ModalMessage | null>(null);
-
-// Event handlers defined inline or as nested functions
-const handleMessageClick = (msg: Message) => {
-  setSelectedMessage({
-    id: msg.id.toString(),
-    title: msg.title,
-    // ...
-  });
-};
-```
-
-#### Conditional Rendering
-```typescript
-// Early return for null cases
-if (!isOpen) return null;
-
-// Conditional classes with clsx
 className={clsx(
-  "flex h-11 items-center justify-between rounded-lg px-3 transition-colors",
-  active
-    ? "bg-accent-primary text-white"
-    : "text-text-tertiary hover:bg-bg-muted hover:text-text-primary"
+  "flex h-11 items-center justify-between rounded-lg px-3",
+  active ? "bg-accent-primary text-white" : "text-text-tertiary"
 )}
 ```
 
-### Tailwind CSS v4 Patterns
+Theme tokens: `bg-bg-primary`, `text-text-primary`, `border-border-primary`, `font-serif`, etc.
 
-#### Class Ordering (group by category)
-1. **Layout**: `flex`, `grid`, `block`, `hidden`, `fixed`, `absolute`
-2. **Sizing**: `w-full`, `h-11`, `min-h-screen`, `max-w-[1160px]`
-3. **Spacing**: `px-6`, `py-8`, `gap-3`, `mb-10`, `ml-[280px]`
-4. **Borders**: `rounded-lg`, `border`, `border-border-primary`
-5. **Background**: `bg-bg-surface`, `bg-accent-primary`
-6. **Typography**: `font-sans`, `font-serif`, `text-sm`, `text-text-primary`
-7. **Effects**: `transition-colors`, `hover:bg-bg-muted`, `backdrop-blur-sm`
-
-#### Custom Theme Tokens (defined in globals.css)
-```css
-/* Colors */
---color-background: var(--background);
---color-foreground: var(--foreground);
---color-accent-primary: var(--accent-primary);    /* #0D6E6E */
---color-accent-secondary: var(--accent-secondary); /* #E07B54 */
---color-bg-muted: var(--bg-muted);
---color-bg-surface: var(--bg-surface);
---color-border-primary: var(--border-primary);
---color-text-primary: var(--text-primary);
---color-text-secondary: var(--text-secondary);
---color-text-tertiary: var(--text-tertiary);
---color-text-muted: var(--text-muted);
-
-/* Fonts */
---font-sans: var(--font-inter);
---font-serif: var(--font-newsreader);
---font-mono: var(--font-jetbrains-mono);
-```
-
-#### Utility Function for Classes
+### React Patterns
 ```typescript
-// Use clsx + tailwind-merge for conditional classes
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+// State with explicit types
+const [isOpen, setIsOpen] = useState(false);
+const [message, setMessage] = useState<Message | null>(null);
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-```
-
-### Form Handling
-```typescript
-// Controlled inputs with explicit event types
-const [taskName, setTaskName] = useState("");
-
-<input
-  value={taskName}
-  onChange={(event) => setTaskName(event.target.value)}
-  placeholder="e.g., Daily Market Analysis"
-  className="h-11 w-full rounded-lg border border-border-primary px-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
-/>
-
-// Form submission
-const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-  event.preventDefault();
-  onCreate?.({ taskName, model, prompt, frequency, hour, minute, notes });
-  onClose();
+// Event handlers
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+  onCreate?.({ name });
 };
+
+// Conditional rendering
+if (!isOpen) return null;
 ```
 
-### Modal Pattern
+### Database/API
 ```typescript
-"use client";
+// API route structure
+import { NextRequest, NextResponse } from "next/server";
+import { query } from "@/lib/db";
 
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  // ... other props
-}
-
-export function Modal({ isOpen, onClose }: ModalProps) {
-  if (!isOpen) return null;
-  
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-bg-surface w-full max-w-[600px] rounded-xl border border-border-primary shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="p-6 border-b border-border-primary flex justify-between items-center">
-          <h2 className="font-serif text-2xl font-medium text-text-primary">Title</h2>
-          <button onClick={onClose} className="...">
-            <X size={18} />
-          </button>
-        </div>
-        
-        {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
-          {/* ... */}
-        </div>
-        
-        {/* Footer */}
-        <div className="p-6 border-t border-border-primary flex justify-end gap-3">
-          <button onClick={onClose} className="...">Cancel</button>
-          <button className="...">Submit</button>
-        </div>
-      </div>
-    </div>
-  );
+export async function GET(): Promise<NextResponse> {
+  const result = await query<Message>("SELECT * FROM messages");
+  return NextResponse.json({ success: true, data: result.rows });
 }
 ```
 
 ### Error Handling
-- Use TypeScript's strict mode to catch errors at compile time
-- Handle event propagation explicitly: `e.stopPropagation()` when needed
-- Use optional chaining for potentially undefined values: `onCreate?.(...)`
-- Provide fallback values: `msg.content || msg.preview`
+- Use TypeScript strict mode
+- Handle event propagation: `e.stopPropagation()`
+- Optional chaining: `onCreate?.(...)`
+- Fallback values: `msg.content || msg.preview`
 
 ### Accessibility
-- Include `aria-label` on icon-only buttons
-- Use semantic HTML (`<header>`, `<main>`, `<nav>`, `<aside>`)
-- Ensure proper heading hierarchy (`h1` → `h2` → `h3`)
-- Use `htmlFor` on labels associated with inputs
+- `aria-label` on icon-only buttons
+- Semantic HTML (`<header>`, `<main>`, `<nav>`)
+- Proper heading hierarchy (`h1` → `h2`)
+- `htmlFor` on labels
+
+## Environment Variables
+
+```bash
+# Database
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=messageflow
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_password
+
+# OpenRouter
+OPENROUTER_API_KEY=sk-or-v1-...
+USE_ONLINE_MODE=true  # Enable real-time web search
+```
 
 ## Dependencies
 
-### Core
-- `next`: 16.1.4
-- `react`: 19.2.3
-- `react-dom`: 19.2.3
-- `typescript`: ^5
+- `next`: 16.1.4, `react`: 19.2.3, `typescript`: ^5
+- `tailwindcss`: ^4, `clsx`, `tailwind-merge`, `lucide-react`
+- `pg`: PostgreSQL driver
+- `ai`, `@openrouter/ai-sdk-provider`: AI SDK
+- `eslint`: ^9, `eslint-config-next`: 16.1.4
 
-### UI & Styling
-- `tailwindcss`: ^4 (with `@tailwindcss/postcss`)
-- `clsx`: ^2.1.1 (conditional classes)
-- `tailwind-merge`: ^3.4.0 (merge Tailwind classes)
-- `lucide-react`: ^0.563.0 (icons)
+## Config Notes
 
-### Linting
-- `eslint`: ^9
-- `eslint-config-next`: 16.1.4
+- Path alias: `@/*` maps to `./*`
+- Fonts loaded via `next/font/google`
+- Tailwind v4 uses CSS-based config in `globals.css`
+- Cron job configured in `vercel.json` (runs every minute)
 
-## Configuration Tips
+## Commits
 
-- **Tailwind v4**: Uses CSS-based configuration in `globals.css` with `@import "tailwindcss"` and `@theme inline`
-- **Path Aliases**: `@/*` maps to `./*` for imports
-- **Fonts**: Loaded via `next/font/google` with CSS variables
-- **Strict TypeScript**: All strict options enabled; avoid `any` types
-
-## Commit & Pull Request Guidelines
-
-- Follow lightweight Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`
-- Use imperative mood: "Add feature" not "Added feature"
-- Keep commits atomic and focused
-- PRs should include: concise summary, key UI changes, screenshots for visual updates
+Use Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`
+Imperative mood: "Add feature" not "Added feature"
