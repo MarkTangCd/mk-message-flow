@@ -26,21 +26,33 @@ export async function executeAIRequest(
   prompt: string,
   options?: ModelIdOptions
 ): Promise<AIExecutionResult> {
+  const AI_REQUEST_TIMEOUT_MS = 180000;
+
   try {
     const modelId = generateOpenRouterModelId(companyName, modelName, options);
 
-    console.log(`Executing AI request with model: ${modelId}`);
-    console.log(`Prompt length: ${prompt.length} characters`);
+    console.log(`[AI] Executing request with model: ${modelId}`);
+    console.log(`[AI] Prompt length: ${prompt.length} characters`);
+    console.log(`[AI] Timeout set to: ${AI_REQUEST_TIMEOUT_MS}ms`);
 
     const startTime = Date.now();
-    
-    const { text } = await generateText({
-      model: openrouter(modelId),
-      prompt: prompt,
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`AI request timed out after ${AI_REQUEST_TIMEOUT_MS}ms`));
+      }, AI_REQUEST_TIMEOUT_MS);
     });
 
+    const { text } = await Promise.race([
+      generateText({
+        model: openrouter(modelId),
+        prompt: prompt,
+      }),
+      timeoutPromise,
+    ]);
+
     const duration = Date.now() - startTime;
-    console.log(`AI request completed in ${duration}ms`);
+    console.log(`[AI] Request completed successfully in ${duration}ms`);
 
     return {
       success: true,
@@ -49,10 +61,11 @@ export async function executeAIRequest(
       promptUsed: prompt,
     };
   } catch (error) {
-    console.error("AI execution failed:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    console.error(`[AI] Execution failed for model ${companyName}/${modelName}: ${errorMessage}`);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
+      error: errorMessage,
       modelUsed: `${companyName}/${modelName}`,
       promptUsed: prompt,
     };

@@ -84,7 +84,7 @@ export function getCurrentTimeInTimezone(timezone: string = "UTC"): {
   dayOfMonth: number;
 } {
   const now = new Date();
-  
+
   const timeOptions: Intl.DateTimeFormatOptions = {
     timeZone: timezone,
     hour: "numeric",
@@ -97,17 +97,37 @@ export function getCurrentTimeInTimezone(timezone: string = "UTC"): {
     day: "numeric",
   };
 
+  const weekdayOptions: Intl.DateTimeFormatOptions = {
+    timeZone: timezone,
+    weekday: "short",
+  };
+
   const timeFormatter = new Intl.DateTimeFormat("en-US", timeOptions);
   const dateFormatter = new Intl.DateTimeFormat("en-US", dateOptions);
-  
+  const weekdayFormatter = new Intl.DateTimeFormat("en-US", weekdayOptions);
+
   const timeParts = timeFormatter.formatToParts(now);
   const dateParts = dateFormatter.formatToParts(now);
+  const weekdayStr = weekdayFormatter.format(now);
 
   const hour = parseInt(timeParts.find((p) => p.type === "hour")?.value || "0", 10);
   const minute = parseInt(timeParts.find((p) => p.type === "minute")?.value || "0", 10);
   const dayOfMonth = parseInt(dateParts.find((p) => p.type === "day")?.value || "1", 10);
 
-  const dayOfWeek = now.getDay();
+  const dayOfWeek = weekdayToNumber(weekdayStr);
 
   return { hour, minute, dayOfWeek, dayOfMonth };
+}
+
+function weekdayToNumber(weekday: string): number {
+  const weekdayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  return weekdayMap[weekday] ?? 0;
 }

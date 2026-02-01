@@ -59,7 +59,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         body.schedule_type,
         body.execution_hour,
         body.execution_minute,
-        body.timezone || "UTC",
+        body.timezone || "Asia/Shanghai",
         body.day_of_week || null,
         body.day_of_month || null,
         body.effective_start_time || null,
