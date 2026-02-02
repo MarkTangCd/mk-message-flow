@@ -30,16 +30,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body: CreateScheduledTaskInput = await request.json();
 
-    if (!body.name || !body.ai_model_id || !body.prompt_content || !body.schedule_type) {
+    if (!body.name || !body.ai_model_id || !body.prompt_content) {
       return NextResponse.json(
-        { success: false, error: "Name, AI model, prompt, and schedule type are required" },
-        { status: 400 }
-      );
-    }
-
-    if (body.execution_hour === undefined || body.execution_minute === undefined) {
-      return NextResponse.json(
-        { success: false, error: "Execution time (hour and minute) is required" },
+        { success: false, error: "Name, AI model, and prompt are required" },
         { status: 400 }
       );
     }
@@ -56,9 +49,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         body.ai_model_id,
         body.prompt_content,
         body.remark || null,
-        body.schedule_type,
-        body.execution_hour,
-        body.execution_minute,
+        body.schedule_type || "daily",
+        body.execution_hour ?? 0,
+        body.execution_minute ?? 0,
         body.timezone || "Asia/Shanghai",
         body.day_of_week || null,
         body.day_of_month || null,

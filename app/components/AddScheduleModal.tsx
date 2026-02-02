@@ -2,18 +2,12 @@
 
 import React, { useState } from "react";
 import { ChevronDown, X } from "lucide-react";
-import { clsx } from "clsx";
 import { AIModel } from "@/lib/types";
-
-export type ScheduleFrequency = "daily" | "weekly" | "monthly";
 
 export interface ScheduleDraft {
   taskName: string;
   model: string;
   prompt: string;
-  frequency: ScheduleFrequency;
-  hour: string;
-  minute: string;
   notes: string;
 }
 
@@ -28,16 +22,13 @@ export function AddScheduleModal({ isOpen, onClose, onCreate, aiModels }: AddSch
   const [taskName, setTaskName] = useState("");
   const [model, setModel] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [frequency, setFrequency] = useState<ScheduleFrequency>("daily");
-  const [hour, setHour] = useState("09");
-  const [minute, setMinute] = useState("00");
   const [notes, setNotes] = useState("");
 
   if (!isOpen) return null;
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onCreate?.({ taskName, model, prompt, frequency, hour, minute, notes });
+    onCreate?.({ taskName, model, prompt, notes });
     onClose();
   };
 
@@ -104,57 +95,6 @@ export function AddScheduleModal({ isOpen, onClose, onCreate, aiModels }: AddSch
               placeholder="Enter the prompt for AI to generate the message..."
               className="min-h-[120px] w-full rounded-lg border border-border-primary p-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
             />
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <span className="font-mono text-[11px] font-semibold tracking-[0.2em] text-text-tertiary">
-              SCHEDULE
-            </span>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-text-primary">Frequency</span>
-              <div className="flex h-10 gap-1 rounded-lg bg-bg-muted p-1">
-                {[
-                  { label: "Daily", value: "daily" },
-                  { label: "Weekly", value: "weekly" },
-                  { label: "Monthly", value: "monthly" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setFrequency(option.value as ScheduleFrequency)}
-                    className={clsx(
-                      "flex-1 rounded-md text-sm font-medium transition-colors",
-                      frequency === option.value
-                        ? "bg-bg-surface text-text-primary"
-                        : "text-text-tertiary"
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-2">
-                <label className="text-sm font-medium text-text-primary">Hour</label>
-                <input
-                  value={hour}
-                  onChange={(event) => setHour(event.target.value)}
-                  placeholder="09"
-                  className="h-11 w-full rounded-lg border border-border-primary px-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
-                />
-              </div>
-              <div className="flex flex-1 flex-col gap-2">
-                <label className="text-sm font-medium text-text-primary">Minute</label>
-                <input
-                  value={minute}
-                  onChange={(event) => setMinute(event.target.value)}
-                  placeholder="00"
-                  className="h-11 w-full rounded-lg border border-border-primary px-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="flex flex-col gap-2">

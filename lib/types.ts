@@ -56,9 +56,9 @@ export interface CreateScheduledTaskInput {
   ai_model_id: number;
   prompt_content: string;
   remark?: string;
-  schedule_type: ScheduleType;
-  execution_hour: number;
-  execution_minute: number;
+  schedule_type?: ScheduleType;
+  execution_hour?: number;
+  execution_minute?: number;
   timezone?: string;
   day_of_week?: number;
   day_of_month?: number;

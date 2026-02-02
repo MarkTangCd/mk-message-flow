@@ -5,6 +5,7 @@ import {
   Bell,
   Clock,
   MoreHorizontal,
+  Play,
   Plus,
   Search,
   Sparkles,
@@ -44,16 +45,8 @@ function formatTime(date: Date | string): string {
   }
 }
 
-function getScheduleDisplay(task: MessageWithDetails): string {
-  const type = task.schedule_type;
-  const hour = task.execution_hour.toString().padStart(2, "0");
-  const minute = task.execution_minute.toString().padStart(2, "0");
-  const time = `${hour}:${minute}`;
-  
-  if (type === "daily") return `Daily · ${time}`;
-  if (type === "weekly") return `Weekly · ${time}`;
-  if (type === "monthly") return `Monthly · ${time}`;
-  return `${type} · ${time}`;
+function getScheduleDisplay(_task: MessageWithDetails): string {
+  return "Manual";
 }
 
 export default function Dashboard() {
@@ -64,6 +57,8 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [aiModels, setAiModels] = useState<AIModel[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
     loadMessages();
@@ -172,14 +167,39 @@ export default function Dashboard() {
         ai_model_id: selectedModel.id,
         prompt_content: draft.prompt,
         remark: draft.notes,
-        schedule_type: draft.frequency,
-        execution_hour: parseInt(draft.hour),
-        execution_minute: parseInt(draft.minute),
       });
       
       setIsModalOpen(false);
     } catch (err) {
       console.error("Failed to create schedule:", err);
+    }
+  };
+
+  const handleManualExecute = async () => {
+    setIsExecuting(true);
+    try {
+      const response = await schedulesApi.executeAll();
+      if (response.success && response.data) {
+        const { total, successful, failed } = response.data;
+        setToast({
+          message: `${total} schedules executed: ${successful} success, ${failed} failed`,
+          type: failed > 0 ? "error" : "success",
+        });
+        loadMessages();
+      } else {
+        setToast({
+          message: response.error || "Failed to execute schedules",
+          type: "error",
+        });
+      }
+    } catch (err) {
+      setToast({
+        message: err instanceof Error ? err.message : "Failed to execute schedules",
+        type: "error",
+      });
+    } finally {
+      setIsExecuting(false);
+      setTimeout(() => setToast(null), 5000);
     }
   };
 
@@ -204,7 +224,15 @@ export default function Dashboard() {
               <button className="flex h-11 w-11 items-center justify-center rounded-lg border border-border-primary bg-bg-surface transition-colors hover:bg-bg-muted">
                 <Bell size={20} className="text-text-primary" />
               </button>
-              <button 
+              <button
+                onClick={handleManualExecute}
+                disabled={isExecuting}
+                className="flex h-11 items-center gap-2 rounded-lg bg-accent-secondary px-4 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                <Play size={16} className={isExecuting ? "animate-pulse" : ""} />
+                <span>{isExecuting ? "Executing..." : "Manual Trigger"}</span>
+              </button>
+              <button
                 onClick={() => setIsModalOpen(true)}
                 className="flex h-11 items-center gap-2 rounded-lg bg-accent-primary px-4 font-semibold text-white transition-opacity hover:opacity-90"
               >
@@ -262,6 +290,19 @@ export default function Dashboard() {
         onCreate={handleCreateSchedule}
         aiModels={aiModels}
       />
+
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 rounded-lg px-4 py-3 shadow-lg ${
+            toast.type === "success"
+              ? "bg-green-600 text-white"
+              : "bg-red-600 text-white"
+          }`}
+          role="alert"
+        >
+          <p className="text-sm font-medium">{toast.message}</p>
+        </div>
+      )}
     </div>
   );
 }

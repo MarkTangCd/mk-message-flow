@@ -58,6 +58,12 @@ export const aiModelsApi = {
     }),
 };
 
+export interface ExecutionSummary {
+  total: number;
+  successful: number;
+  failed: number;
+}
+
 export const schedulesApi = {
   getAll: () => fetchApi<ScheduledTaskWithModel[]>("/schedules"),
   getById: (id: number) => fetchApi<ScheduledTaskWithModel>(`/schedules/${id}`),
@@ -74,6 +80,10 @@ export const schedulesApi = {
   delete: (id: number) =>
     fetchApi<void>(`/schedules/${id}`, {
       method: "DELETE",
+    }),
+  executeAll: () =>
+    fetchApi<ExecutionSummary>("/schedules/execute", {
+      method: "POST",
     }),
 };
 

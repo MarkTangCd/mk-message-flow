@@ -25,17 +25,8 @@ interface DisplaySchedule {
   rawData: ScheduledTaskWithModel;
 }
 
-function getCadenceDisplay(task: ScheduledTaskWithModel): string {
-  const type = task.schedule_type;
-  if (type === "daily") return "Daily";
-  if (type === "weekly") {
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    return task.day_of_week !== null ? days[task.day_of_week] : "Weekly";
-  }
-  if (type === "monthly") {
-    return task.day_of_month !== null ? `${task.day_of_month}th of month` : "Monthly";
-  }
-  return type;
+function getCadenceDisplay(_task: ScheduledTaskWithModel): string {
+  return "Manual";
 }
 
 function getIndicatorColor(index: number): string {
@@ -62,13 +53,13 @@ export default function SchedulesPage() {
       if (response.success && response.data) {
         const displaySchedules: DisplaySchedule[] = response.data.map((task, index) => ({
           id: task.id.toString(),
-          time: `${task.execution_hour.toString().padStart(2, "0")}:${task.execution_minute.toString().padStart(2, "0")}`,
+          time: "On demand",
           cadence: getCadenceDisplay(task),
           title: task.name,
           status: task.is_active ? "ACTIVE" : "INACTIVE",
           model: `${task.ai_model_company} ${task.ai_model_name}`,
-          prompt: task.prompt_content.length > 30 
-            ? task.prompt_content.substring(0, 30) + "..." 
+          prompt: task.prompt_content.length > 30
+            ? task.prompt_content.substring(0, 30) + "..."
             : task.prompt_content,
           indicatorColor: getIndicatorColor(index),
           rawData: task,
@@ -97,16 +88,13 @@ export default function SchedulesPage() {
     taskName: string;
     model: string;
     prompt: string;
-    frequency: "daily" | "weekly" | "monthly";
-    hour: string;
-    minute: string;
     notes: string;
   }) => {
     try {
-      const selectedModel = aiModels.find((m) => 
+      const selectedModel = aiModels.find((m) =>
         `${m.company_name} ${m.model_name}` === draft.model
       );
-      
+
       if (!selectedModel) {
         console.error("Selected model not found");
         return;
@@ -117,9 +105,6 @@ export default function SchedulesPage() {
         ai_model_id: selectedModel.id,
         prompt_content: draft.prompt,
         remark: draft.notes,
-        schedule_type: draft.frequency,
-        execution_hour: parseInt(draft.hour),
-        execution_minute: parseInt(draft.minute),
       });
       
       setIsModalOpen(false);

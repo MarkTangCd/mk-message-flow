@@ -104,7 +104,7 @@ export function MessageDetailModal({
             <p className="font-mono text-[10px] uppercase tracking-wider text-text-tertiary mb-4">
               Message Content
             </p>
-            <div className="prose prose-sm max-w-none font-sans text-text-secondary leading-relaxed whitespace-pre-line">
+            <div className="whitespace-pre-wrap font-sans text-sm text-text-secondary leading-relaxed">
               {message.content}
             </div>
           </div>
